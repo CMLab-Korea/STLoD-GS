@@ -6,6 +6,7 @@
 .author-row sup{white-space:nowrap;margin-left:2px}
 .author-row sup img{display:inline-block;width:auto;height:1.05em;vertical-align:baseline;margin-right:1px}
 .project-affiliations{font-size:.95rem;gap:4px 16px}
+.project-affiliations img{display:inline-block;width:auto;height:1.25em;vertical-align:middle;margin-right:.2em}
 .project-roles{color:var(--ink-2);margin-top:6px;font-size:.84rem}
 .project-logos{margin:16px auto;gap:14px 22px}
 .project-logos a{display:inline-flex;align-items:center;gap:8px;color:#0d207f;text-decoration:none;font-weight:600}
