@@ -1,0 +1,30 @@
+.project-authors{margin:24px auto 10px}
+.author-row,.project-affiliations,.project-logos,.project-resources{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 22px}
+.author-row+.author-row{margin-top:4px}
+.author-row a,.side-foot a{color:#0d207f;text-decoration:none;font-weight:600}
+.author-row a:hover,.side-foot a:hover{text-decoration:underline}
+.author-row sup{white-space:nowrap;margin-left:2px}
+.author-row sup img{display:inline-block;width:auto;height:1.05em;vertical-align:baseline;margin-right:1px}
+.project-affiliations{font-size:.95rem;gap:4px 16px}
+.project-roles{color:var(--ink-2);margin-top:6px;font-size:.84rem}
+.project-logos{margin:16px auto;gap:14px 22px}
+.project-logos a{display:inline-flex;align-items:center;gap:8px;color:#0d207f;text-decoration:none;font-weight:600}
+.project-logos img{width:auto;height:32px}
+.project-logos a:first-child img{height:21px}
+.project-resources{gap:8px}
+.resource{display:inline-flex;align-items:center;gap:.45em;padding:7px 15px;border-radius:999px;border:1px solid #0d207f;background:#0d207f;color:white;text-decoration:none;font-size:.91rem;font-weight:600}
+.resource[href]:hover{background:#243c96}
+.resource.pending{background:white;border-color:#c9ced8;color:#4d5362}
+.resource small{font-size:.75rem;font-weight:400}
+.project-tldr{margin:-8px 0 20px;max-width:850px;color:var(--ink-2)}
+.project-tldr strong{color:#0d207f;margin-right:.45em}
+.metric-plot{max-width:680px;margin:12px 0;color:var(--ink-2)}
+.metric-plot summary{cursor:pointer;font-weight:600;color:#0d207f}
+.metric-plot figcaption{margin:10px 0;font-size:.85rem}
+.metric-plot ol{list-style:none}
+.metric-plot li{display:grid;grid-template-columns:minmax(100px,1fr) minmax(70px,2fr) 46px;gap:8px;align-items:center;font-size:.84rem}
+.plot-track{background:#eef1f5;height:7px;border-radius:4px}
+.plot-track i{display:block;background:#0d207f;height:100%;border-radius:4px}
+#citation pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:16px;font: .87rem/1.6 var(--mono)}
+#project-pageviews img{vertical-align:middle;margin-left:10px}
+@media(max-width:600px){.project-logos a{font-size:.86rem}.project-logos{gap:10px}.author-row{gap:4px 12px}.project-affiliations{display:grid}.project-roles{margin-top:9px}}

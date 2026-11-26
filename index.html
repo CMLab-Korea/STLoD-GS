@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STLoD-GS: Spatio-Temporal Level-of-Detail 4D Gaussian Splatting via On-Demand Test-Time Densification</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="canonical" href="https://cmlab-korea.github.io/STLoD-GS/">
+<meta name="description" content="STLoD-GS project page. Explore on-demand spatial zoom and slow motion in dynamic scenes using 4D Gaussian Splatting.">
+<link rel="stylesheet" href="assets/project.css">
+<style>
+/* Noto Sans (SIL OFL 1.1, assets/fonts/OFL-NotoSans.txt), bundled locally */
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/noto-sans-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/noto-sans-greek-400-normal.woff2) format("woff2");unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/noto-sans-latin-500-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/noto-sans-greek-500-normal.woff2) format("woff2");unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/noto-sans-latin-600-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/noto-sans-greek-600-normal.woff2) format("woff2");unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:700;font-display:swap;src:url(assets/fonts/noto-sans-latin-700-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:700;font-display:swap;src:url(assets/fonts/noto-sans-greek-700-normal.woff2) format("woff2");unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:800;font-display:swap;src:url(assets/fonts/noto-sans-latin-800-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Noto Sans";font-style:normal;font-weight:800;font-display:swap;src:url(assets/fonts/noto-sans-greek-800-normal.woff2) format("woff2");unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:"Noto Sans";font-style:italic;font-weight:400;font-display:swap;src:url(assets/fonts/noto-sans-latin-400-italic.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+/* Inter and JetBrains Mono (SIL OFL 1.1) for the result tables, as on the reference page */
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/inter-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/inter-latin-500-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/inter-latin-600-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url(assets/fonts/inter-latin-700-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/jetbrains-mono-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500;font-display:swap;src:url(assets/fonts/jetbrains-mono-latin-500-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  --bg:#f8fbf2; --bg-tint:#eff6e2; --bg-tint-2:#f5f9ec; --leaf:#e3f0cd; --leaf-2:#cfe4ae;
+  --ink:#27301f; --ink-2:#4d5844; --ink-3:#7c876f;
+  --line:#e3ebd5; --line-2:#cfdcbb;
+  --brown:#9a5a2b; --brown-ink:#7a4219; --brown-soft:#f3d8bd; --brown-ghost:#fbf1e5;
+  --green:#6aa12b; --green-ink:#4c7d16; --green-soft:#dfefc6; --green-ghost:#f1f8e6;
+  --yellow:#f2b200;
+  --grad:linear-gradient(96deg,#7a4219 0%,#b06a32 45%,#6aa12b 105%);
+  --grad-bar:linear-gradient(90deg,#b06a32,#9ccc4f);
+  --shadow:0 1px 2px rgba(40,50,25,.05),0 6px 18px rgba(90,120,50,.09);
+  --shadow-2:0 14px 40px rgba(90,120,50,.16),0 2px 6px rgba(40,50,25,.06);
+  --radius:14px; --radius-sm:9px;
+  --font:"Noto Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --display:"Noto Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --side:236px; --wrap:1120px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img,video{display:block;max-width:100%;height:auto}
+button{font:inherit;cursor:pointer}
+b,strong{font-weight:650;color:var(--ink)}
+i.v{font-style:italic;font-family:var(--font)}
+sub,sup{font-size:.72em}
+.progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--grad-bar);z-index:1001}
+
+/* side navigation: numbered stations on a filling rail */
+.side{position:fixed;top:0;left:0;bottom:0;width:var(--side);padding:26px 18px 22px;background:linear-gradient(180deg,#ffffff 0%,#f2f8e8 100%);border-right:1px solid var(--line);z-index:1000;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:750;font-size:1.12rem;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.brand img{width:40px;height:auto}
+.side .brand{flex-direction:column;align-items:flex-start;gap:8px}
+.side .brand img{width:58px;padding:6px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow)}
+.side-sub{margin-top:8px;font-size:.76rem;line-height:1.45;color:var(--ink-3)}
+.side-links{margin-top:28px;display:flex;flex-direction:column;gap:4px;position:relative;padding-left:16px}
+.side-links .rail{position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:3px;background:var(--line)}
+.side-links .rail i{position:absolute;left:0;top:0;width:100%;height:0;border-radius:3px;background:linear-gradient(180deg,var(--brown),var(--green))}
+.side-links a{display:grid;grid-template-columns:30px 1fr;align-items:center;padding:7px 10px 7px 8px;border-radius:10px;font-size:.92rem;font-weight:550;color:var(--ink-2);text-decoration:none;border:1px solid transparent;transition:all .15s}
+.side-links a .no{font-family:var(--mono);font-size:.74rem;color:var(--ink-3)}
+.side-links a:hover{background:#fff;border-color:var(--line)}
+.side-links a.active{background:#fff;border-color:var(--leaf-2);color:var(--ink);font-weight:700;box-shadow:var(--shadow)}
+.side-links a.active .no{color:#fff;background:var(--brown);border-radius:6px;padding:1px 0;text-align:center;width:24px}
+.side-links a.done .no{color:var(--green-ink)}
+.side-foot{margin-top:auto;font-size:.76rem;color:var(--ink-3);line-height:1.5;padding-top:14px;border-top:1px dashed var(--line-2)}
+.topbar{display:none}
+
+main{margin-left:var(--side)}
+.wrap{width:min(var(--wrap),100% - 48px);margin:0 auto}
+.wrap--narrow{width:min(880px,100% - 48px);margin:0 auto}
+
+/* hero */
+.hero{position:relative;padding:60px 0 30px;overflow:hidden;text-align:center}
+.hero-bg{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.6}
+.blob-1{width:520px;height:520px;left:-160px;top:-200px;background:#e4f1cf}
+.blob-2{width:420px;height:420px;right:-120px;top:-60px;background:#f6e6d2}
+.blob-3{width:360px;height:360px;left:42%;top:120px;background:#eef6df}
+.hero-mark{display:block;width:clamp(204px,18vw,228px);margin:0 auto}
+.hero-logo{display:block;width:100%;height:auto}
+h1.title{font-family:var(--display);font-weight:800;letter-spacing:-.03em;line-height:1.08;font-size:clamp(2.2rem,5vw,3.5rem);margin-top:14px}
+h1 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1 .tail{display:block;font-size:clamp(1.15rem,2.4vw,1.75rem);font-weight:600;color:var(--ink-2);letter-spacing:-.015em;margin-top:10px}
+.anon{margin-top:22px;font-size:1.02rem;color:var(--ink-2);font-weight:500}
+.anon-note{margin-top:4px;font-size:.86rem;color:var(--ink-3)}
+
+/* sections */
+section.section{padding:70px 0;scroll-margin-top:12px}
+section.tint{background:linear-gradient(180deg,var(--bg-tint-2),var(--bg-tint) 40%,var(--bg-tint-2))}
+.section-head{margin-bottom:24px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--brown)}
+.eyebrow::before{content:"";width:22px;height:2px;background:var(--grad-bar);border-radius:2px}
+h2{font-family:var(--display);font-weight:750;letter-spacing:-.025em;line-height:1.15;font-size:clamp(1.55rem,3vw,2.2rem);margin-top:10px;max-width:880px;text-wrap:balance}
+h3{font-family:var(--display);font-weight:700;letter-spacing:-.015em;font-size:1.1rem}
+.lede{margin-top:12px;font-size:1.04rem;color:var(--ink-2);max-width:860px}
+.prose p{margin-top:14px;color:var(--ink-2);max-width:880px}
+.prose p:first-child{margin-top:0}
+.hint{font-size:.86rem;color:var(--ink-3)}
+
+/* abstract */
+details.abstract{margin-top:36px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 20px;box-shadow:var(--shadow)}
+details.abstract summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+details.abstract summary::-webkit-details-marker{display:none}
+details.abstract .more{font-size:.82rem;font-weight:650;color:var(--green-ink);padding:3px 10px;border-radius:7px;background:var(--green-ghost)}
+details.abstract .more::after{content:"Show"}
+details.abstract[open] .more::after{content:"Hide"}
+details.abstract .prose{margin-top:12px}
+.contributions{margin-top:36px}
+.contributions article h3{color:#8A4B2A}
+.contributions article{padding:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.contributions article p{margin-top:6px;color:var(--ink-2)}
+
+/* media */
+.video-shell{position:relative;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line-2);background:#151c10}
+.video-shell video{width:100%}
+.placeholder{aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#e3eed3;background:
+  radial-gradient(circle at 30% 30%,rgba(154,90,43,.32),transparent 60%),radial-gradient(circle at 75% 70%,rgba(106,161,43,.30),transparent 55%),#1d2616}
+.placeholder .play{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center}
+.placeholder .play::after{content:"";border-left:18px solid rgba(255,255,255,.75);border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px}
+.placeholder .ph-label{font-size:.9rem;font-weight:600}
+.placeholder .ph-sub{font-size:.78rem;opacity:.7}
+.overview-video{box-shadow:var(--shadow-2)}
+
+/* tabs */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:#fff;border:1px solid var(--line-2);border-radius:12px;width:max-content;max-width:100%;box-shadow:var(--shadow)}
+.tab{border:0;background:transparent;padding:8px 15px;border-radius:9px;font-weight:600;font-size:.9rem;color:var(--ink-2);transition:all .15s}
+.tab:hover{color:var(--brown-ink)}
+.tab.active{background:var(--leaf);color:var(--ink);box-shadow:inset 0 -3px 0 var(--brown)}
+.tab:focus-visible,.chip:focus-visible,.thumb:focus-visible,.mcard:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+/* demo: tabs, thumbnails, player */
+.ours-hl{position:absolute;pointer-events:none;border:3px solid var(--yellow);border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 18px rgba(242,178,0,.55);transition:opacity .2s}
+.ours-hl img{position:absolute;top:13%;right:6px;width:40px;height:auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+.player-tools{display:flex;justify-content:flex-end;margin-bottom:8px}
+.hl-off .ours-hl{opacity:0}
+.demo-notation{margin:0 0 20px;padding:16px 20px;background:#fff;border:1px solid var(--line);border-left:4px solid var(--green-ink);border-radius:var(--radius)}
+.demo-notation h3{margin:0 0 6px;color:var(--green-ink);font-size:1.05rem}
+.demo-notation ul{padding-left:1.25em;color:var(--ink-2);line-height:1.5}
+.demo-notation li+li{margin-top:4px}
+.demo-notation li::marker{color:var(--green-ink)}
+.nota-grid{display:grid;grid-template-columns:1fr 3fr;gap:20px;align-items:center}
+.nota-fig{margin:0}
+.nota-fig img{display:block;width:100%;height:auto}
+.demo-notation .nota{margin:0 .15em;vertical-align:middle}
+@media (max-width:720px){.nota-grid{grid-template-columns:1fr}.nota-fig{max-width:300px}}
+.thumbs{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory}
+.thumb{flex:0 0 180px;scroll-snap-align:start;border:2px solid transparent;border-radius:12px;background:#fff;padding:0;text-align:left;overflow:hidden;box-shadow:var(--shadow);transition:transform .15s,border-color .15s}
+.thumb:hover{transform:translateY(-2px)}
+.thumb.active{border-color:var(--brown)}
+.thumb img{width:100%;aspect-ratio:16/10;object-fit:cover}
+.thumb .tt{padding:6px 8px 8px;font-size:.74rem;font-weight:650;color:var(--ink);line-height:1.35}
+.thumb .tt small{display:block;font-weight:500;color:var(--ink-3)}
+/* setting notation as in the paper: (s: 1/m -> r_s, t: 1/n -> r_t) */
+.nota{color:var(--green-ink);display:inline-flex;align-items:center;gap:.28em;margin-top:5px;padding:2px 8px;border:1.5px solid currentColor;border-radius:7px;font-weight:800;font-size:.82rem;line-height:1;white-space:nowrap}
+.nota .fr{display:inline-flex;flex-direction:column;align-items:center;font-size:.7em;line-height:1.05;margin:0 .05em}
+.nota .fr span:first-child{border-bottom:1.2px solid currentColor;padding:0 .1em}
+.nota i{font-style:italic;font-weight:800}
+.player-cap .nota{font-size:.88rem;margin:0}
+.thumb.empty{display:flex;align-items:center;justify-content:center;height:120px;color:var(--ink-3);font-size:.82rem;border:2px dashed var(--line-2);box-shadow:none;background:transparent;cursor:default}
+.player{margin-top:6px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+.demo-paper-ref{margin:0 0 10px;font-size:.86rem;line-height:1.5;color:var(--ink-2)}
+.player-cap{margin-top:10px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;font-size:.9rem;color:var(--ink-2)}
+.player-cap b{font-family:var(--display)}
+
+/* method: figure tabs with linked cards */
+.figpanel{display:none}.figpanel.active{display:block}
+.figdesc{color:var(--ink-2);max-width:900px}
+.figbox{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.figwrap{position:relative;line-height:0;overflow:hidden;border-radius:6px}
+.figwrap img{width:100%}
+.figwrap{scroll-margin-top:84px;background:white}
+.figwrap.zoomed img,.figwrap.zoomed .fig-hit{visibility:hidden}
+.figwrap.zoomed>svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+.fig-hit{position:absolute;border:0;background:transparent;cursor:zoom-in}
+.fig-hit:hover,.fig-hit:focus-visible,.fig-hit.preview{outline:2px solid var(--brown);outline-offset:-2px;border-radius:4px}
+.figure-tools{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.figure-actions,.figure-steps{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.figure-actions{justify-content:space-between}
+.figure-steps{margin-top:8px}
+.fig-reference{display:block;color:var(--ink-2);font-size:.74rem;font-weight:500;line-height:1.45}
+.mcard{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
+.mcard .lab{align-self:flex-start}
+.figure-steps button{text-align:left}
+#fig-tabs .tab.active .fig-reference{color:inherit}
+.figure-steps button{padding:5px 10px;font:inherit;font-size:.9rem;color:var(--ink-2);background:white;border:1px solid var(--line-2);border-radius:7px}
+.figure-steps button[aria-pressed="true"]{background:var(--leaf);border-color:var(--green);color:var(--ink)}
+@media(max-width:620px){
+  .figwrap.zoomed{aspect-ratio:var(--view-ratio);max-height:62svh}
+  .figwrap.zoomed img{display:none}
+  .topbar .brand{white-space:nowrap;flex:none}
+}
+.enlarge-figure{margin-left:.5em}
+#method-image-dialog{width:min(96vw,1550px);max-height:94dvh;overflow:auto;margin:auto;padding:16px;color:var(--ink);border:1px solid var(--line);border-radius:var(--radius)}
+#method-image-dialog::backdrop{background:rgb(24 30 20 / .65)}
+#method-image-dialog form{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+#method-image-dialog img{display:block;max-height:78dvh;max-width:100%;margin:auto;object-fit:contain}
+figcaption{margin-top:12px;font-size:.88rem;color:var(--ink-2);line-height:1.55}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
+.mcard{text-align:left;color:inherit;line-height:inherit;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
+.mcard:hover,.mcard:focus-visible,.mcard[aria-pressed="true"]{border-color:var(--brown);transform:translateY(-2px)}
+.mcard .lab{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:34px;padding:0 9px;border-radius:9px;font-weight:700;color:#fff;background:var(--brown);font-size:1.02rem;letter-spacing:.01em}
+.mcard .card-title{display:block;margin-top:10px;font:700 1.1rem/1.45 var(--display);letter-spacing:-.015em}
+.mcard .card-copy{display:block;margin-top:6px;font-size:.9rem;color:var(--ink-2)}
+.callout{margin-top:20px;padding:12px 16px;border-radius:var(--radius-sm);background:var(--green-ghost);border:1px solid var(--green-soft);color:var(--ink-2);font-size:.93rem}
+
+/* playground */
+.playground{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
+.play-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+.pane{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fcfdf9;min-width:0}
+.pane h4{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.pane h4 .sw{width:10px;height:10px;border-radius:3px;background:var(--brown)}
+.pane.t h4 .sw{background:var(--green)}
+.pane svg{width:100%;height:auto;display:block;margin-top:6px}
+.pane label{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;color:var(--ink-2);margin-top:10px}
+.pane input[type=range]{width:100%;accent-color:var(--brown)}
+.pane.t input[type=range]{accent-color:var(--green)}
+.meter{display:grid;grid-template-columns:62px 1fr 40px;gap:8px;align-items:center;font-size:.8rem;margin-top:6px;color:var(--ink-2)}
+.meter .track{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.meter .fill{height:100%;border-radius:4px;background:var(--brown);width:0}
+.timeline{display:flex;gap:3px;margin-top:8px}
+.timeline span{flex:1 1 0;height:14px;border-radius:3px;background:var(--line)}
+.timeline span.obs{background:var(--brown-soft);border:1px solid #e0b98f}
+.timeline span.rel{background:var(--green-soft);border:1px solid #b9d98a}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px;font-size:.76rem;color:var(--ink-3)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.status{margin-top:10px;padding:8px 11px;border-radius:8px;background:var(--bg-tint);font-size:.82rem;color:var(--ink-2)}
+.btn-mini{border:1px solid var(--line-2);background:#fff;border-radius:8px;padding:3px 10px;font-size:.8rem;font-weight:650;color:var(--ink-2)}
+.btn-mini:hover{border-color:var(--green)}
+
+/* tables */
+.panel{display:none}
+.panel.active{display:block}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
+.chip{border:1px solid var(--line-2);background:#fff;padding:5px 12px;border-radius:999px;font-size:.84rem;font-weight:600;color:var(--ink-2)}
+.chip.active{background:var(--green-ghost);border-color:var(--green);color:var(--green-ink)}
+.table-scroll{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+table.res{border-collapse:collapse;width:100%;font-family:"Inter",var(--font);font-size:.86rem}
+table.res td.num{font-family:"JetBrains Mono",var(--mono);font-size:.82rem}
+table.res th,table.res td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+table.res th{background:#f3f8ea;font-weight:650;color:var(--ink-2);font-size:.8rem}
+table.res td:first-child,table.res th:first-child,table.res td.name{text-align:left}
+table.res td.grp{font-weight:700;color:var(--ink-3);width:36px}
+table.res tr.sep td{border-top:2px solid var(--line-2)}
+table.res tr.ours td{background:var(--green-ghost)}
+table.res tr.ours td.name{font-weight:700;color:var(--green-ink)}
+td.best{color:#c2372d;font-weight:700}
+td.second{color:#2e61b8;font-weight:650}
+.venue{font-size:.75em;color:var(--ink-3);margin-left:4px}
+.tcap{margin-top:10px;font-size:.86rem;color:var(--ink-3)}
+
+footer{padding:36px 0 48px;text-align:center;color:var(--ink-3);font-size:.85rem;border-top:1px solid var(--line)}
+
+@media (max-width:1000px){
+  .side{display:none}
+  main{margin-left:0}
+  .topbar{display:flex;position:sticky;top:0;z-index:999;align-items:center;gap:14px;padding:10px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);overflow-x:auto}
+  .topbar .brand{font-size:1rem}.topbar .brand img{width:30px}
+  .topbar a.l{font-size:.86rem;color:var(--ink-2);text-decoration:none;white-space:nowrap;padding:5px 8px;border-radius:7px}
+  .topbar a.l.active{background:var(--leaf);color:var(--ink)}
+  .play-grid{grid-template-columns:1fr}
+}
+@media (max-width:620px){
+  .wrap,.wrap--narrow{width:calc(100% - 32px)}
+  section.section{padding:52px 0}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+/* Position the live formula in the title band of the source video. */
+.demo-frame{container-type:inline-size;position:relative}
+.demo-live{position:absolute;top:0;width:17.5%;height:auto;pointer-events:none}
+.demo-live[hidden]{display:none}
+#player-shell video[controlslist~="nofullscreen"]::-webkit-media-controls-fullscreen-button{display:none}
+#demo-fullscreen{margin-left:auto}
+#demo-fullscreen[hidden]{display:none}
+.player:fullscreen{background:black;border:0;border-radius:0;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.player:fullscreen #player-shell{width:min(100%,calc((100dvh - 64px)*var(--demo-ratio)));flex:none;border:0;border-radius:0}
+.player:fullscreen .demo-paper-ref,.player:fullscreen #player-cap{display:none}
+.player:fullscreen .player-cap{width:100%;color:white;align-items:center}
+.player:fullscreen #player-title{color:white}
+.player:fullscreen .player-cap .nota{background:#fff}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<aside class="side">
+  <a class="brand" href="#top"><img src="assets/icon.png" alt=""><span>STLoD-GS</span></a>
+  <div class="side-sub">Spatio-Temporal Level-of-Detail 4D Gaussian Splatting via On-Demand Test-Time Densification</div>
+  <nav class="side-links" aria-label="Sections">
+    <span class="rail"><i id="rail"></i></span>
+    <a href="#overview"><span class="no">01</span>Overview</a>
+    <a href="#demos"><span class="no">02</span>Demo Videos</a>
+    <a href="#method"><span class="no">03</span>Method</a>
+    <a href="#controls"><span class="no">04</span>Test-time LoD control</a>
+    <a href="#results"><span class="no">05</span>Results</a>
+  </nav>
+  <div class="side-foot"><a href="#citation">BibTeX</a></div>
+</aside>
+
+<nav class="topbar" aria-label="Sections">
+  <a class="brand" href="#top"><img src="assets/icon.png" alt="">STLoD-GS</a>
+  <a class="l" href="#overview">Overview</a><a class="l" href="#demos">Demo Videos</a><a class="l" href="#method">Method</a><a class="l" href="#controls">Test-time LoD control</a><a class="l" href="#results">Results</a>
+</nav>
+
+<main>
+<header class="hero" id="top">
+  <div class="hero-bg"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+  <div class="wrap">
+    <div class="hero-mark"><img class="hero-logo" src="assets/icon.png" width="1920" height="1792" alt="STLoD-GS project icon: a ladybug under a magnifying glass, with 4× zoom and 8× slow motion."></div>
+    <h1 class="title"><span class="grad">STLoD-GS</span><span class="tail">Spatio-Temporal Level-of-Detail 4D Gaussian Splatting<br>via On-Demand Test-Time Densification</span></h1>
+    <div class="project-authors" aria-label="Authors"><div class="author-row"><a href="https://skwak-kaist.github.io/">Sangwoon Kwak<sup><img src="assets/identity/etri.png" alt="">1*</sup></a> <a href="https://klavna.github.io/WeeyoungKwon.github.io/">Weeyoung Kwon<sup><img src="assets/identity/cau.png" alt="">2*</sup></a> <a href="https://openreview.net/profile?id=~Jun_Young_Jeong1">Jun Young Jeong<sup><img src="assets/identity/etri.png" alt="">1</sup></a></div>
+<div class="author-row"><a href="https://ksp.etri.re.kr/ksp/user/a644ddcf-a071-471f-a03b-09a01d64c0c1">Won-Sik Cheong<sup><img src="assets/identity/etri.png" alt="">1</sup></a> <a href="https://ksp.etri.re.kr/ksp/user/79b85f7e-56c8-4517-a67d-63bab2e5e2d6">Hyon-Gon Choo<sup><img src="assets/identity/etri.png" alt="">1</sup></a> <a href="https://sites.google.com/view/ozbro/">Jihyong Oh<sup><img src="assets/identity/cau.png" alt="">2†</sup></a></div></div>
+    <div class="project-affiliations">
+      <span><sup>1</sup> Electronics and Telecommunications Research Institute (ETRI)</span>
+      <span><sup>2</sup> CMLab, Chung-Ang University</span>
+    </div>
+    <p class="project-roles"><sup>*</sup> Equal contribution &emsp; <sup>†</sup> Corresponding author</p>
+    <div class="project-logos">
+      <a href="https://www.etri.re.kr/eng/main/main.etri"><img src="assets/identity/ETRI_logo.png" alt="ETRI"></a>
+      <a href="https://cmlab.cau.ac.kr/"><img src="assets/identity/cmlab_logo.png" alt=""><span>Creative Vision and Multimedia Lab (CMLab)</span></a>
+    </div>
+    <nav class="project-resources" aria-label="Project resources">
+      <span class="resource pending" data-resource="arxiv" aria-disabled="true">arXiv <small>Coming soon</small></span>
+      <a class="resource" href="https://github.com/CMLab-Korea/arXiv-STLoD-GS">Code</a>
+      <a class="resource" href="#demos">Demo Video</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============================== OVERVIEW ============================== -->
+<section class="section tint" id="overview">
+  <div class="wrap--narrow">
+    <div class="section-head"><span class="eyebrow">Overview</span><h2>Zoom in space and time without storing the details.</h2></div>
+    <p class="project-tldr"><strong>TL;DR</strong> STLoD-GS splits static Gaussians for spatial zoom and relocates dynamic Gaussians for slow motion, generating detail on demand from one compact 4D scene model.</p>
+    <div class="video-shell overview-video">
+      <video controls muted loop playsinline preload="metadata" poster="assets/thumbnails/overview.poster.jpg?v=1123a"><source src="videos/overview.mp4?v=1123a" type="video/mp4"></video>
+    </div>
+    <div class="prose" style="margin-top:26px">
+      <p>4D Gaussian Splatting renders dynamic scenes in real time, but the level of detail of its renderings is fixed to the spatio-temporal resolution of the training videos. Users, however, zoom into regions of interest and slow playback down, which asks for views at resolutions that were never observed in training.</p>
+      <p><b>STLoD-GS</b> stores only a <b>compact hybrid 4DGS</b> of <b>implicit anchors</b> for static regions and <b>explicit Gaussians</b> for dynamic regions. When a view is magnified, <b>test-time densification (TTD)</b> splits the magnified static Gaussians into finer children and relocates dynamic Gaussians to unobserved times. Both are computed on demand and never stored.</p>
+    </div>
+    <details class="abstract">
+      <summary><span class="eyebrow">Abstract</span><span class="more"></span></summary>
+      <div class="prose">
+        <p>4D Gaussian Splatting (4DGS) synthesizes novel views of dynamic scenes in real time, but the Level-of-Detail (LoD) of its renderings is fixed to the spatio-temporal resolution of the training videos. In practice, however, users demand more than novel view synthesis, such as zooming into regions of interest or slowing playback down, which requires rendering views at spatio-temporal resolutions beyond those observed in training, without compromising the compact storage and real-time interactivity of 4DGS. Existing LoD-controllable GS methods address only the spatial axis of static scenes. They either filter detail away for distant views or store several pre-built levels, which increases storage and causes visible discontinuities between levels. To overcome these limitations, we propose STLoD-GS, a spatio-temporal LoD framework for 4DGS based on Test-Time Densification (TTD), which generates finer detail at test time instead of storing it. STLoD-GS builds on a hybrid 4DGS of implicit anchors and explicit Gaussians, which serve as its spatially and temporally extensible parts, respectively. Whenever a view is spatio-temporally magnified, a compact generator splits implicit Gaussians into finer children for spatial LoD, and a lightweight network predicts the position and velocity of each explicit Gaussian at unobserved times for temporal LoD. This Gaussian-wise TTD enables continuous spatio-temporal resolution control without heavy pre-cached detail or separately stored levels, and it also extrapolates robustly beyond the observed resolution. Experiments on five dynamic scene datasets show that STLoD-GS not only outperforms SOTA 4DGS methods but also provides spatio-temporal LoD when zooming in space and time with almost no extra storage.</p>
+      </div>
+    </details>
+    <section class="contributions" aria-labelledby="contributions-title">
+      <h2 id="contributions-title">Key Contributions</h2>
+      <div class="cards">
+        <article><h3>Spatio-Temporal LoD Framework for 4DGS</h3><p>One compact hybrid 4DGS renders the full sequence at its base level. Test-Time Densification generates finer detail at the requested view and time with little additional storage.</p></article>
+        <article><h3>Spatial LoD: Test-Time Densification</h3><p>In magnified regions, a lightweight child generator splits selected static Gaussians into finer children. Parent and child opacities blend continuously across levels.</p></article>
+        <article><h3>Temporal LoD: Test-Time Relocation</h3><p>At unobserved times, the temporal relocator moves vanishing Gaussians forward and appearing Gaussians backward from adjacent training frames, reducing ghosting between observations.</p></article>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ============================== DEMO VIDEOS ============================== -->
+<section class="section" id="demos">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Demo Videos</span><h2>Continuous zoom-in and slow motion.</h2>
+      <p class="lede">Each video compares STLoD-GS with the baselines side by side. Pick a thumbnail to play it in the viewer below.</p></div>
+    <aside class="demo-notation" aria-labelledby="demo-notation-title">
+      <div class="nota-grid">
+        <figure class="nota-fig"><img src="assets/notation-st.png" alt="Training at s 1/m and t 1/n is mapped to the test view at r_s and r_t on the spatial and temporal level-of-detail axes."></figure>
+        <div class="nota-text">
+          <h3 id="demo-notation-title">Reading the <i>s</i> and <i>t</i> boxes</h3>
+          <ul>
+            <li><strong>Training → Test.</strong> <span class="nota"><i>s</i>:<span class="fr"><span>1</span><span><i>m</i></span></span>→<i>r<sub>s</sub></i>, <i>t</i>:<span class="fr"><span>1</span><span><i>n</i></span></span>→<i>r<sub>t</sub></i></span> The left of each arrow is the resolution observed in training, and the right is the resolution rendered at test time. Both are relative to the captured resolution and frame rate, which we denote by 1.</li>
+            <li><strong><i>s</i> · Spatial resolution.</strong> The model is trained on frames at 1/<i>m</i> of the captured width and height and rendered at <i>r<sub>s</sub></i>, which magnifies each image axis by <i>m</i>·<i>r<sub>s</sub></i>. In the videos, <i>r<sub>s</sub></i> follows the current zoom.</li>
+            <li><strong><i>t</i> · Frame rate.</strong> The model is trained on every <i>n</i>-th frame and rendered at <i>r<sub>t</sub></i> times the captured frame rate, which magnifies time by <i>n</i>·<i>r<sub>t</sub></i>. Played back at the captured frame rate, <i>r<sub>t</sub></i> is the slow-motion factor, so 1 is real time and 8 is one-eighth speed. In the videos, <i>r<sub>t</sub></i> follows the current slow motion.</li>
+            <li><strong>Example.</strong> <span class="nota"><i>s</i>:<span class="fr"><span>1</span><span>4</span></span>→1, <i>t</i>:<span class="fr"><span>1</span><span>2</span></span>→1</span> trains on quarter-resolution frames and every other frame, and renders at the captured resolution and frame rate. The thumbnails give the target scales of each video.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="player">
+      <p class="demo-paper-ref" id="demo-paper-ref"></p>
+      <div class="video-shell" id="player-shell"></div>
+      <div class="player-cap"><b id="player-title"></b><button type="button" class="btn-mini" id="demo-fullscreen" hidden>Full screen</button><span id="player-cap"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== METHOD ============================== -->
+<section class="section tint" id="method">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Method</span><h2>Store a compact hybrid model, densify it only when a view is magnified.</h2>
+      <p class="lede">Select a panel in the figure or its card to explore the steps.</p></div>
+    <div class="toolbar"><div class="tabs" role="tablist" id="fig-tabs" aria-label="Method figures">
+      <button class="tab active" data-p="f-teaser">Conceptual teaser<span class="fig-reference">Main paper · Fig. 1</span></button>
+      <button class="tab" data-p="f-overview">Method overview<span class="fig-reference">Main paper · Fig. 2</span></button>
+      <button class="tab" data-p="f-design">Design considerations<span class="fig-reference">Main paper · Fig. 3</span></button>
+      <button class="tab" data-p="f-control">Test-time spatio-temporal LoD control<span class="fig-reference">Main paper · Fig. 4</span></button>
+    </div></div>
+
+    <div class="figpanel active" id="f-teaser">
+      <p class="figdesc">Existing LoD methods either pre-store levels or enhance rendered frames with 2D networks. STLoD-GS stores one compact model and densifies it at test time only where a view is magnified.</p>
+      <div class="cards">
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(a)</span><span class="card-title">Store-and-Select</span><span class="card-copy">Stores several levels and selects one at render time. Storage grows with the levels, and switching levels breaks temporal consistency.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(b)</span><span class="card-title">Render-then-Enhance</span><span class="card-copy">Enhances rendered frames with 2D SR or frame interpolation, which is not geometrically consistent and needs future frames along an unknown camera path.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(c)</span><span class="card-title">Test-Time Densification</span><span class="card-copy">Stores only a compact hybrid 4DGS and generates finer Gaussians on demand, splitting static ones in space and relocating dynamic ones in time.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(d)</span><span class="card-title">Rendering</span><span class="card-copy">A view unobserved in both space and time, compared with implicit and explicit 4DGS methods in dynamic and static regions.</span></button>
+      </div>
+      <div class="figbox"><div class="figwrap"><img src="assets/fig/teaser.jpg" alt="Comparison of Store-and-Select, Render-then-Enhance, and STLoD-GS"></div>
+        <figcaption><b>Main paper, Fig. 1.</b> <b>Spatio-temporal Level-of-Detail without storing the details.</b> Under (s:1/4 → 1, t:1/2 → 1), STLoD-GS reconstructs the unobserved novel view with TTD in dynamic (blue) and static (orange) regions. <button type="button" class="btn-mini enlarge-figure">Enlarge figure</button></figcaption></div>
+    </div>
+
+    <div class="figpanel" id="f-overview">
+      <p class="figdesc">A hybrid base of explicit dynamic Gaussians and implicit static anchors is trained once. On the frozen base, the child generator <i class="v">G</i> and the temporal relocator <i class="v">R</i> add spatial and temporal detail at test time.</p>
+      <div class="cards">
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(a)</span><span class="card-title">Region partition</span><span class="card-copy">Initial points are labeled dynamic or static from image cues, and slowly moving static points move to the dynamic branch after a short warm-up.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(b)</span><span class="card-title">Hybrid 4DGS Representation</span><span class="card-copy">Dynamic regions are explicit Gaussians with velocity and lifespan. Static regions are implicit anchors whose Gaussians are decoded per view.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(c)</span><span class="card-title">Hybrid 4DGS Training</span><span class="card-copy">Both branches are rendered in a single pass and trained together within the storage of a single explicit 4DGS.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(d)</span><span class="card-title">Spatial LoD: Test-Time Densification</span><span class="card-copy"><i class="v">G</i> splits magnified static parents into two children. It learns where to split from a lower-resolution auxiliary model and how to split by reproducing the training frames.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(e)</span><span class="card-title">Temporal LoD: Test-Time Relocation</span><span class="card-copy"><i class="v">R</i>, trained on displacements from dense correspondences, moves vanishing and appearing Gaussians to unobserved times and hands them over.</span></button>
+      </div>
+      <div class="figbox"><div class="figwrap"><img src="assets/fig/overview.jpg" alt="Overview of STLoD-GS"></div>
+        <figcaption><b>Main paper, Fig. 2.</b> <b>Overview of STLoD-GS.</b> Children and relocated Gaussians are computed at test time and never stored, so storage holds only the base model and the two shared MLPs. <button type="button" class="btn-mini enlarge-figure">Enlarge figure</button></figcaption></div>
+    </div>
+
+    <div class="figpanel" id="f-design">
+      <p class="figdesc">Sparse Gaussians are light but lose detail up close, and per-frame fitting leaves ghosting between frames. Generating children and relocating Gaussians at test time addresses both without extra storage.</p>
+      <div class="cards">
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(a1·a2)</span><span class="card-title">Sparse, large Gaussians / Dense, small Gaussians</span><span class="card-copy">Sparse, large Gaussians keep storage light but lose detail when zoomed in. Dense, small Gaussians keep detail but make storage heavy.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(a3)</span><span class="card-title">Test-Time Densification</span><span class="card-copy">Store the sparse model and add finer Gaussians with a light feed-forward generator only when the camera zooms in.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(b1·b2)</span><span class="card-title">Real motion (ideal fit) / Naive fitting</span><span class="card-copy">Ideally one Gaussian follows the motion. Per-frame fitting instead switches one Gaussian off and another on, leaving ghosting at unobserved times.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(b3)</span><span class="card-title">Test-Time Relocation</span><span class="card-copy">Move the vanishing Gaussian forward and the appearing one backward, then hand them over smoothly around the middle of the interval.</span></button>
+      </div>
+      <div class="figbox"><div class="figwrap"><img src="assets/fig/design.jpg" alt="Design considerations"></div>
+        <figcaption><b>Main paper, Fig. 3.</b> <b>Design considerations</b> for spatial LoD (zooming in) and temporal LoD (slowing down). <button type="button" class="btn-mini enlarge-figure">Enlarge figure</button></figcaption></div>
+    </div>
+
+    <div class="figpanel" id="f-control">
+      <p class="figdesc">The spatial and temporal branches act on disjoint sets of Gaussians, static implicit and dynamic explicit, so the two magnifications are controlled independently and can run in any order. A magnification of 1 on both axes reproduces the frozen base model exactly.</p>
+      <div class="cards">
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(a)</span><span class="card-title">Spatio-Temporal LoD</span><span class="card-copy">Spatial LoD acts only on static implicit Gaussians, and temporal LoD only on dynamic explicit Gaussians.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(b)</span><span class="card-title">Spatial branch</span><span class="card-copy">Parents magnified in the view pass through <i class="v">G</i>. Those with <i class="v">q</i> &gt; τ* split, the others are kept, and children fade in continuously with magnification.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">(c)</span><span class="card-title">Temporal branch</span><span class="card-copy">Between two captured frames, vanishing and appearing Gaussians are relocated by <i class="v">R</i> and blended, while the others keep their stored motion.</span></button>
+        <button type="button" class="mcard" aria-pressed="false"><span class="lab">Output</span><span class="card-title">Independent branch, run in any order</span><span class="card-copy">The two branches touch disjoint Gaussians, so they run in any order and are rasterized together in a single pass.</span></button>
+      </div>
+      <div class="figbox"><div class="figwrap"><img src="assets/fig/control.jpg" alt="Test-time spatio-temporal LoD control"></div>
+        <figcaption><b>Main paper, Fig. 4.</b> <b>Test-time spatio-temporal LoD control</b> under (s:1/2 → 1, t:1/2 → 1). <button type="button" class="btn-mini enlarge-figure">Enlarge figure</button></figcaption></div>
+
+
+    </div>
+
+    <div class="callout"><b>Storage.</b> Children and relocated Gaussians are generated on demand and discarded after rendering. The stored model is the hybrid base plus the two shared MLPs, which add about 0.86&nbsp;MB.</div>
+  </div>
+</section>
+
+<!-- ============================== INTERACTIVE CONTROL ============================== -->
+<section class="section" id="controls" aria-labelledby="controls-heading">
+  <div class="wrap">
+    <div class="section-head"><h2 id="controls-heading">Test-time spatio-temporal LoD control</h2>
+      <p class="lede">Move the camera closer to see a static Gaussian split, or slow playback to follow a moving Gaussian between training frames.</p></div>
+    <div class="playground">
+      <div class="play-grid">
+        <div class="pane s">
+          <h4><span class="sw"></span>Spatial branch: split a parent into children</h4>
+          <p class="fig-reference">Main paper · Fig. 4(b) · Algorithm 1 (static branch)</p>
+          <svg viewBox="0 0 400 264" id="svg-s" role="img" aria-label="Top view and camera view of a fixed-field-of-view camera approaching the selected orange Gaussian"></svg>
+          <label for="ms"><span>Spatial magnification <i class="v">M<sub>s</sub></i></span><span id="ms-v"></span></label>
+          <input type="range" id="ms" min="0" max="2.5" step="0.01" value="0">
+          <div class="meter"><span>Level 1</span><div class="track"><div class="fill" id="w1"></div></div><span id="w1v"></span></div>
+          <div class="meter"><span>Level 2</span><div class="track"><div class="fill" id="w2"></div></div><span id="w2v"></span></div>
+          <div class="status" id="status-s"></div>
+        </div>
+        <div class="pane t">
+          <h4><span class="sw"></span>Temporal branch: relocate and hand over</h4>
+          <p class="fig-reference">Main paper · Fig. 4(c) · Algorithm 1 (dynamic branch)</p>
+          <svg viewBox="0 0 400 214" id="svg-t" aria-label="Relocation of vanishing and appearing Gaussians"></svg>
+          <label for="tt"><span>Time <i class="v">t</i> between <i class="v">t<sub>a</sub></i> and <i class="v">t<sub>b</sub></i></span><button class="btn-mini" id="tplay" type="button">Play</button></label>
+          <input type="range" id="tt" min="0" max="1" step="0.005" value="0.5">
+          <label for="mt"><span>Temporal magnification <i class="v">M<sub>t</sub></i></span><span id="mt-v"></span></label>
+          <input type="range" id="mt" min="0" max="3" step="1" value="1">
+          <div class="timeline" id="tl"></div>
+          <div class="legend"><span><i style="background:var(--brown-soft)"></i>training frame (base model)</span><span><i style="background:var(--green-soft)"></i>unobserved frame (relocated)</span></div>
+          <div class="status" id="status-t"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== RESULTS ============================== -->
+<section class="section" id="results">
+  <div class="wrap">
+    <div class="section-head"><span class="eyebrow">Results</span><h2>4× zoom and 2× frame rate in 53.7 MB on average</h2>
+      <p class="lede">Each scene is evaluated from a held-out camera. The arrows show the change from training to test resolution (<i class="v">s</i>) and frame rate (<i class="v">t</i>). <span style="color:#c2372d;font-weight:700">Red</span> marks the best score and <span style="color:#2e61b8;font-weight:700">blue</span> the next distinct score.</p></div>
+    <div class="toolbar"><div class="tabs" role="tablist" id="res-tabs">
+      <button class="tab active" data-p="p-st">Spatio-temporal LoD</button>
+      <button class="tab" data-p="p-s">Spatial LoD</button>
+      <button class="tab" data-p="p-t">Temporal LoD</button>
+      <button class="tab" data-p="p-b">Beyond captured resolution</button>
+    </div></div>
+
+    <div class="panel active" id="p-st">
+      <p class="hint"><strong>Main paper · Table 1</strong> &nbsp;·&nbsp; At 4× spatial magnification and 2× frame rate (s: 1/4 → 1, t: 1/2 → 1), the evaluation includes every frame of the held-out view.</p>
+      <div class="chips" id="st-chips"></div>
+      <details class="metric-plot"><summary>Compare LPIPS by method</summary><figure><figcaption id="plot-caption"></figcaption><ol id="metric-bars"></ol></figure></details>
+      <div class="table-scroll"><table class="res" id="st-table"></table></div>
+      <p class="tcap">Quality scores are averaged over the selected scenes. Storage is the mean model size over all 24 scenes. Groups (a), (b) and (c) denote implicit, explicit and hybrid 4DGS, respectively. Supplementary Table 9 also reports quality at 1× and 4× zoom.</p>
+      <div class="prose" style="margin-top:16px"><p>Across 24 scenes, STLoD-GS achieves the highest PSNR and the lowest LPIPS and tLP. Its SSIM of 0.801 ties the base model for first. Compared with FreeTimeGS, STLoD-GS improves all four quality metrics, gaining <strong>0.49 dB in PSNR with 11.7% less storage</strong> (53.7 vs. 60.8 MB). Even without TTD, the base model surpasses every external baseline on all four averages. Adding TTD lowers LPIPS on each of the five datasets, from 0.281 to 0.268 overall.</p></div>
+    </div>
+
+    <div class="panel" id="p-s">
+      <p class="hint"><strong>Main paper · Table 2</strong> &nbsp;·&nbsp; SelfCap, four scenes and ten frames. All training frames are observed, and the test view is rendered at 4× zoom (s: 1/4 → 1, t: 1 → 1).</p>
+      <div class="table-scroll" style="margin-top:12px"><table class="res" id="s-table"></table></div>
+      <p class="tcap">(a) Store-and-Select, (b) Render-then-Enhance, and (c) Test-Time Densification. † Trained separately for each frame.</p>
+      <div class="prose" style="margin-top:16px"><p>At 4× zoom on SelfCap, STLoD-GS achieves the highest PSNR (22.33 dB) and the lowest temporal errors (5.18 tOF and 0.0442 tLP). It also has the smallest model at 67.8 MB. CLoD-GS achieves the lowest LPIPS (0.251) and uses 1,793.5 MB.</p></div>
+    </div>
+
+    <div class="panel" id="p-t">
+      <p class="hint"><strong>Main paper · Table 3</strong> &nbsp;·&nbsp; NVIDIA, eight scenes. Models observe every other training frame and are evaluated at the intervening times in the held-out view (s: 1 → 1, t: 1/2 → 1).</p>
+      <div class="table-scroll" style="margin-top:12px"><table class="res" id="t-table"></table></div>
+      <p class="tcap">(a) implicit, (b) explicit, and (c) hybrid 4DGS.</p>
+      <div class="prose" style="margin-top:16px"><p>On unobserved NVIDIA frames, test-time relocation raises PSNR from 27.93 to 28.28 dB and reduces tOF by 25% (0.176 to 0.132) relative to the base model. STLoD-GS leads on PSNR, SSIM, LPIPS and tOF. FreeTimeGS and the base model share the lowest tLP (0.0035), followed by STLoD-GS (0.0038).</p></div>
+    </div>
+
+    <div class="panel" id="p-b">
+      <p class="hint"><strong>Main paper · Table 5</strong> &nbsp;·&nbsp; Models are trained at the captured resolution and frame rate on six scenes. The test view is rendered at 2× and 4× spatial magnification at the original frame rate.</p>
+      <div class="table-scroll" style="margin-top:12px"><table class="res" id="b-table"></table></div>
+      <p class="tcap">MUSIQ (higher is better) and NIQE (lower is better) measure image quality without a high-resolution reference. Scores are averaged over six scenes.</p>
+      <div class="prose" style="margin-top:16px"><p>At both 2× and 4× zoom, STLoD-GS achieves the highest MUSIQ and the lowest NIQE. Relative to the base model, TTD raises MUSIQ by 1.70 points at 2× and 2.15 points at 4×.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section tint" id="citation">
+  <div class="wrap--narrow">
+    <h2>BibTeX</h2>
+    <pre><code id="project-bibtex">@article{kwak2026stlodgs,
+  title   = {STLoD-GS: Spatio-Temporal Level-of-Detail 4D Gaussian Splatting via On-Demand Test-Time Densification},
+  author  = {Kwak, Sangwoon and Kwon, Weeyoung and Jeong, Jun Young and Cheong, Won-Sik and Choo, Hyon-Gon and Oh, Jihyong},
+  journal = {arXiv preprint arXiv:xxxx.xxxxx},
+  year    = {2026}
+}</code></pre>
+  </div>
+</section>
+<footer>STLoD-GS · ETRI &amp; CMLab, Chung-Ang University <span id="project-pageviews"></span></footer>
+<script src="assets/publication.js" defer></script>
+</main>
+
+<script src="assets/demo-zoom.js?v=1124c"></script>
+<script>
+const V=s=>" <span class=venue>"+s+"</span>";
+/* ---------- data (from the paper tables; venues from the bibliography) ---------- */
+const DS=["All (24)","SelfCap (4)","DyNeRF (6)","NVIDIA (8)","VRU (2)","Custom (4)"];
+const DSI={"All (24)":5,"SelfCap (4)":0,"DyNeRF (6)":1,"NVIDIA (8)":2,"VRU (2)":3,"Custom (4)":4};
+const ST=[
+ ["(a)","4DGS","CVPR'24",["22.17/.828/.309/.0468","28.08/.874/.241/.0211","24.98/.758/.327/.0334","24.89/.857/.333/.0249","19.83/.629/.429/.0141","24.42/.785/.320/.0286"],"33.2"],
+ ["","MoDec-GS","CVPR'25",["21.13/.821/.350/.0570","24.85/.841/.333/.0224","24.84/.759/.335/.0397","24.71/.853/.322/.0271","19.26/.633/.408/.0146","23.28/.777/.348/.0330"],"31.4"],
+ ["","LocalDyGS","ICCV'25",["21.93/.825/.300/.0399","28.79/.875/.239/.0155","24.91/.752/.315/.0542","25.64/.868/.270/.0166","19.89/.627/.406/.0105","24.61/.784/.305/.0317"],"80.8"],
+ ["","MoRel","CVPR'26",["22.56/.824/.330/.0563","27.13/.870/.209/.0208","24.76/.763/.320/.0403","24.09/.865/.283/.0252","20.07/.644/.411/.0143","24.15/.789/.306/.0325"],"131.9"],
+ ["(b)","STG","CVPR'24",["23.27/.836/.277/.0416","29.22/.880/.243/.0209","24.53/.760/.330/.0368","27.02/.874/.304/.0169","19.67/.627/.417/.0127","24.89/.790/.311/.0280"],"68.3"],
+ ["","Ex4DGS","NeurIPS'24",["18.45/.775/.472/.0442","27.30/.823/.283/.0182","22.59/.632/.415/.0346","23.97/.820/.372/.0115","18.25/.528/.471/.0103","22.47/.702/.397/.0261"],"88.5"],
+ ["","FreeTimeGS","CVPR'25",["23.42/.839/.281/.0334","28.92/.878/.244/.0203","25.71/.772/.290/.0204","26.75/.885/.259/.0058","19.89/.629/.433/.0100","25.25/.795/.298/.0196"],"60.8"],
+ ["(c)","STLoD-GS w/o TTD","",["23.58/.849/.246/.0276","29.28/.879/.233/.0205","25.60/.768/.287/.0201","28.81/.891/.256/.0048","20.58/.655/.390/.0099","25.61/.801/.281/.0185"],"52.4"],
+ ["","STLoD-GS (Ours)","",["23.87/.847/.236/.0280","29.35/.880/.219/.0205","25.75/.771/.284/.0185","28.64/.888/.246/.0055","20.73/.654/.350/.0101","25.74/.801/.268/.0181"],"53.7"]
+];
+const SP={head:["Method","PSNR ↑","SSIM ↑","LPIPS ↓","tOF ↓","tLP ↓","MB"],dir:[1,1,-1,-1,-1,0],rows:[
+ ["(a)","Octree-GS †"+V("arXiv'24"),["17.42",".646",".476","34.83",".1833","567.9"]],
+ ["","CLoD-GS †"+V("ICLR'26"),["20.49",".783",".251","13.76",".0680","1793.5"]],
+ ["(b)","FreeTimeGS + SwinIR"+V("CVPR'25 + ICCVW'21"),["22.29",".825",".306","5.86",".0534","110.0"]],
+ ["","FreeTimeGS + BasicVSR++"+V("CVPR'25 + CVPR'22"),["22.31",".824",".307","5.87",".0548","91.4"]],
+ ["","FreeTimeGS + TMP"+V("CVPR'25 + TIP'24"),["22.32",".823",".304","5.83",".0543","82.9"]],
+ ["","MoRel + SwinIR"+V("CVPR'26 + ICCVW'21"),["21.21",".815",".325","7.54",".0887","220.8"]],
+ ["","MoRel + BasicVSR++"+V("CVPR'26 + CVPR'22"),["21.21",".814",".324","7.40",".0901","202.2"]],
+ ["","MoRel + TMP"+V("CVPR'26 + TIP'24"),["21.20",".813",".322","7.49",".0896","193.7"]],
+ ["(c)","STLoD-GS (Ours)",["22.33",".821",".273","5.18",".0442","67.8"]]]};
+const TP={head:["Method","PSNR ↑","SSIM ↑","LPIPS ↓","tOF ↓","tLP ↓","MB"],dir:[1,1,-1,-1,-1,0],rows:[
+ ["(a)","4DGS"+V("CVPR'24"),["27.26",".893",".066",".191",".0058","27.1"]],
+ ["","MoDec-GS"+V("CVPR'25"),["27.41",".898",".063",".165",".0079","29.4"]],
+ ["","LocalDyGS"+V("ICCV'25"),["25.38",".859",".085",".346",".0347","72.6"]],
+ ["","MoRel"+V("CVPR'26"),["26.80",".893",".064",".173",".0080","101.5"]],
+ ["","ClipGStream"+V("CVPR'26"),["20.18",".737",".188","2.544",".1379","2170.7"]],
+ ["(b)","STG"+V("CVPR'24"),["26.28",".883",".077",".283",".0063","40.2"]],
+ ["","FreeTimeGS"+V("CVPR'25"),["27.46",".897",".051",".176",".0035","49.4"]],
+ ["(c)","STLoD-GS w/o TTD",["27.93",".897",".046",".176",".0035","39.8"]],
+ ["","STLoD-GS (Ours)",["28.28",".901",".045",".132",".0038","41.1"]]]};
+const BP={head:["Method","MUSIQ ↑ (2×)","NIQE ↓ (2×)","MUSIQ ↑ (4×)","NIQE ↓ (4×)"],dir:[1,-1,1,-1],rows:[
+ ["","FreeTimeGS"+V("CVPR'25"),["44.78","5.41","28.96","7.55"]],
+ ["","MoRel"+V("CVPR'26"),["40.58","5.41","26.46","7.70"]],
+ ["","STLoD-GS w/o TTD",["45.92","5.08","29.34","7.49"]],
+ ["","STLoD-GS (Ours)",["47.62","4.96","31.49","7.09"]]]};
+
+function ranks(vals,dir){
+  const u=[...new Set(vals.map(Number))].sort((a,b)=>dir>0?b-a:a-b);
+  return vals.map(v=>Number(v)===u[0]?"best":(Number(v)===u[1]?"second":""));
+}
+function render(el,spec){
+  const cols=spec.head.length-1;
+  const R=[];for(let c=0;c<cols;c++){const d=spec.dir[c];R.push(d?ranks(spec.rows.map(r=>r[2][c]),d):spec.rows.map(()=>""));}
+  let h="<thead><tr><th colspan=2>"+spec.head[0]+"</th>"+spec.head.slice(1).map(x=>"<th>"+x+"</th>").join("")+"</tr></thead><tbody>";
+  spec.rows.forEach((r,i)=>{
+    const ours=/STLoD/.test(r[1]);
+    h+="<tr class='"+(r[0]&&i>0?"sep ":"")+(ours?"ours":"")+"'><td class=grp>"+r[0]+"</td><td class=name>"+r[1]+"</td>"+r[2].map((v,c)=>"<td class='num "+R[c][i]+"'>"+v+"</td>").join("")+"</tr>";
+  });
+  el.innerHTML=h+"</tbody>";
+}
+function renderST(ds){
+  const k=DSI[ds];
+  const bars = document.getElementById("metric-bars");
+  bars.replaceChildren();
+  document.getElementById("plot-caption").textContent = ds + " · LPIPS at 4× zoom and 2× frame rate (lower is better)";
+  for (const row of ST) {
+    const value = Number(row[3][k].split("/")[2]);
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = row[1];
+    const bar = document.createElement("i");
+    bar.style.width = (value * 100) + "%";
+    const track = document.createElement("span");
+    track.className = "plot-track";
+    track.append(bar);
+    const score = document.createElement("span");
+    score.textContent = value.toFixed(3);
+    item.append(name, track, score);
+    bars.append(item);
+  }
+  render(document.getElementById("st-table"),{head:["Method","PSNR ↑","SSIM ↑","LPIPS ↓","tLP ↓","MB"],dir:[1,1,-1,-1,0],
+    rows:ST.map(r=>[r[0],r[1]+(r[2]?V(r[2]):""),r[3][k].split("/").concat([r[4]])])});
+}
+const chips=document.getElementById("st-chips");
+DS.forEach((d,i)=>{const b=document.createElement("button");b.className="chip"+(i?"":" active");b.textContent=d;b.onclick=()=>{chips.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderST(d);};chips.appendChild(b);});
+renderST(DS[0]);
+render(document.getElementById("s-table"),SP);
+render(document.getElementById("t-table"),TP);
+render(document.getElementById("b-table"),BP);
+
+function tabs(groupSel,panelSel){
+  document.querySelectorAll(groupSel+" .tab").forEach(t=>t.onclick=()=>{
+    document.querySelectorAll(groupSel+" .tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");
+    document.querySelectorAll(panelSel).forEach(p=>p.classList.toggle("active",p.id===t.dataset.p));});
+}
+tabs("#res-tabs","#results .panel");
+const figureTabs = [...document.querySelectorAll("#fig-tabs .tab")];
+function chooseFigure(tab) {
+  for (const button of figureTabs) {
+    const panel = document.getElementById(button.dataset.p);
+    const active = button === tab;
+    if (!active && panel.classList.contains("active")) panel.dispatchEvent(new Event("leavefigure"));
+    panel.classList.toggle("active", active);
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+  }
+}
+for (const [index, tab] of figureTabs.entries()) {
+  const panel = document.getElementById(tab.dataset.p);
+  tab.id = "tab-" + panel.id;
+  tab.setAttribute("role","tab");
+  tab.setAttribute("aria-controls",panel.id);
+  panel.setAttribute("role","tabpanel");
+  panel.setAttribute("aria-labelledby",tab.id);
+  tab.onclick = () => chooseFigure(tab);
+  tab.onkeydown = event => {
+    const positions = {ArrowRight:index+1, ArrowLeft:index-1, Home:0, End:figureTabs.length-1};
+    if (!(event.key in positions)) return;
+    event.preventDefault();
+    const next = figureTabs[(positions[event.key]+figureTabs.length) % figureTabs.length];
+    chooseFigure(next);
+    next.focus();
+  };
+}
+chooseFigure(figureTabs[0]);
+
+/* ---------- demo videos: tabs, thumbnails, player ---------- */
+const DEMOS=[
+ {s:[2,2],t:[1,8],title:"Skating (NVIDIA)",tag:"zoom ×4 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames, then zoomed 4× onto the skateboard, which is 2× beyond the captured resolution, with 8× slow motion. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Main paper Fig. 5 shows the Skating scene. This clip extends the zoom to 2× the captured resolution.",
+  zoom:demoZoom.skating, speed:demoSpeed.skating, notationX:565, videoHeight:614,
+  src:"videos/1608_nv_skating_beyond_x4_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1608_nv_skating_beyond_x4_slow8.thumb.jpg"},
+ {s:[2,4],t:[1,8],title:"Broom (Custom)",tag:"zoom ×8 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames. The view zooms 5× onto the bench and 8× onto the foliage along spiral paths in real time, up to 4× beyond the captured 4K resolution, and finally 3× onto the legs and the broom with 8× slow motion. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Main paper Fig. 6 also shows Broom. Table 5 reports 2× and 4× zoom across six scenes. This spiral view reaches 8× on Broom.",
+  zoom:demoZoom.broomBench, speed:demoSpeed.broomBench, notationX:651, videoHeight:650,
+  src:"videos/1605_broom_bench_spiral_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1605_broom_bench_spiral_slow8.thumb.jpg?v=1121e"},
+ {s:[2,1.5],t:[1,8],title:"Truck (NVIDIA)",tag:"zoom ×3 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames, then the view zooms 3× onto the passing car, which is 1.5× beyond the captured resolution, and follows it at 8× slow motion. FreeTimeGS is trained to the same storage as STLoD-GS. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Supplementary Table 8 lists Truck in the NVIDIA dataset. Main paper Fig. 6 and Table 5 study zoom beyond the captured resolution on other scenes.",
+  zoom:demoZoom.truck, speed:demoSpeed.truck, notationX:631, videoHeight:614,
+  src:"videos/1622_nv_truck_beyond_x3_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1622_nv_truck_beyond_x3_slow8.thumb.jpg"},
+ {s:[2,1.25],t:[1,8],title:"Basketball (VRU)",tag:"zoom ×2.5 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames, then zoomed 2.5× onto the ball, which is 1.25× beyond the captured resolution, with 8× slow motion. The clip pauses for three seconds on the dribbling player, with a 2× enlarged view of the boxed region in every panel. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Main paper Fig. 6 shows the VRU-DG basketball scene at 4× zoom, which is 2× the captured resolution. This clip follows the ball at 1.25× the captured resolution with 8× slow motion.",
+  zoom:demoZoom.basketball, speed:demoSpeed.basketball, notationX:568, videoHeight:650,
+  src:"videos/1607_vru_dg_ball_x2.5_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1607_vru_dg_ball_x2.5_slow8.thumb.jpg"},
+ {s:[3,"2/3"],t:[1,8],title:"Softball (PanopticSports)",tag:"zoom ×2 · slow ×8",
+  cap:"Trained at one third of the captured resolution on all frames from 27 cameras and viewed from a held-out test camera. The view zooms 2× onto the bat swing, which reaches two thirds of the captured resolution, and follows it at 8× slow motion. FreeTimeGS is trained to the same storage as STLoD-GS. Five baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"PanopticSports is not part of the main paper. This clip uses the same models as its quantitative evaluation on six sequences.",
+  zoom:demoZoom.softball, speed:demoSpeed.softball, notationX:1005, notationWidth:448, videoHeight:866,
+  src:"videos/1704_pano_softball_swing_x2_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1704_pano_softball_swing_x2_slow8.thumb.jpg?v=1122d"},
+ {s:[3,"2/3"],t:[1,8],title:"Basketball (PanopticSports)",tag:"zoom ×2 · slow ×8",
+  cap:"Trained at one third of the captured resolution on all frames from 27 cameras and viewed from a held-out test camera. The view zooms 2× onto the catch, which reaches two thirds of the captured resolution, and follows the ball into the man's hands at 8× slow motion. The clip pauses for three seconds on the raised hand and the falling ball, with a 2× enlarged view of each boxed region in every panel. Five baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"PanopticSports is not part of the main paper. Basketball is one of the six PanopticSports sequences of its quantitative evaluation.",
+  zoom:demoZoom.pbasket, speed:demoSpeed.pbasket, notationX:1047, notationWidth:448, videoHeight:866,
+  src:"videos/1710p_pano_basketball_catch_x2_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1710p_pano_basketball_catch_x2_slow8.thumb.jpg?v=1122e"},
+ {s:[4,1],t:[2,8],title:"Paper Windmill (DyCheck)",tag:"zoom ×4 · slow ×8",
+  cap:"Monocular video. Trained on every other frame of a single moving camera at one quarter of the captured resolution, as in Supplementary Sec. 12.5.2. The view starts at a training pose with time frozen, moves a third of the way toward the held-out camera and plays in real time, then circles the spinning windmill along a spiral path with a 4× zoom, which reaches the captured resolution, and 8× slow motion, and returns to the training pose. Four baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"DyCheck is not part of the main paper. Supplementary Sec. 12.5.2 evaluates it as an additional monocular dataset under the same setting.",
+  zoom:demoZoom.windmill, speed:demoSpeed.windmill, notationX:586, videoHeight:612,
+  src:"videos/1036_mono_dycheck_windmill_spiral_slow8.mp4?v=1124c",thumb:"assets/thumbnails/1036_mono_dycheck_windmill_spiral_slow8.thumb.jpg?v=1124c"},
+ {s:[2,4],t:[1,8],title:"Broom (Custom)",tag:"zoom ×8 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames and viewed from a held-out camera. The view first tours the tables and chairs at up to 8× zoom, beyond the captured 4K resolution, in real time, then zooms 3× onto the sweeping man with 8× slow motion. FreeTimeGS is trained to the same storage as STLoD-GS. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Main paper Fig. 6 shows the person sweeping in Broom. Table 5 reports spatial quality beyond the captured resolution. This clip also slows the sweeping motion.",
+  zoom:demoZoom.broomSweep, speed:demoSpeed.broomSweep, notationX:651, videoHeight:650,
+  src:"videos/1620_broom_sweeper_x3_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1620_broom_sweeper_x3_slow8.thumb.jpg"},
+ {s:[2,3],t:[1,8],title:"Corgi (SelfCap)",tag:"zoom ×6 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames and viewed from a held-out camera. The full shot plays in real time and then at 8× slow motion around the corgi, and the view then zooms 6× onto the bare branches above the flowerpot and circles them along a spiral path, 3× beyond the captured 4K resolution. FreeTimeGS is trained to the same storage as STLoD-GS. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Main paper Fig. 6 shows Corgi beyond the captured resolution. SelfCap is one of the four datasets of Table 1.",
+  zoom:demoZoom.corgi, speed:demoSpeed.corgi, notationX:636, videoHeight:650,
+  src:"videos/1623_corgi_dog_branches_x6_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1623_corgi_dog_branches_x6_slow8.thumb.jpg?v=1122d"},
+ {s:[2,1.25],t:[1,8],title:"Bike (SelfCap)",tag:"zoom ×2.5 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames and viewed from a held-out camera. The view zooms 2.5× onto the hand spinning the rear wheel, 1.25× beyond the captured resolution, while the playback slows down to 8× slow motion. The clip pauses for three seconds on the hand, with a 2× enlarged view of the boxed region in every panel. FreeTimeGS is trained to the same storage as STLoD-GS. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"SelfCap is one of the four datasets of Table 1. This clip shows fast hand and wheel motion under joint zoom and slow motion.",
+  zoom:demoZoom.bike, speed:demoSpeed.bike, notationX:628, videoHeight:1068,
+  src:"videos/1617_bike_hands_wheel_x2.5_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1617_bike_hands_wheel_x2.5_slow8.thumb.jpg?v=1122d"},
+ {s:[2,1],t:[1,8],title:"Playground (NVIDIA)",tag:"zoom ×2 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames and viewed from a held-out camera. The full shot plays in real time and then at 8× slow motion, and the same moment is replayed with a 2× zoom onto the woman and the balloon, which reaches the captured resolution. FreeTimeGS is trained to the same storage as STLoD-GS. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Playground is one of the eight NVIDIA scenes of Table 1. This clip replays the moving balloon at the captured resolution with 8× slow motion.",
+  zoom:demoZoom.playground, speed:demoSpeed.playground, notationX:701, videoHeight:570,
+  src:"videos/1615_nv_playground_balloon_x2_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1615_nv_playground_balloon_x2_slow8.thumb.jpg"},
+ {s:[2,1.5],t:[1,8],title:"Bartender (Custom)",tag:"zoom ×3 · slow ×8",
+  cap:"Trained at half the captured resolution on all frames and viewed from a held-out camera. The view zooms 3× onto the cocktail pour, 1.5× beyond the captured resolution, and follows it at 8× slow motion. The clip pauses for three seconds on the bartender's left hand in the air, with a 2× enlarged view of the boxed region in every panel. FreeTimeGS is trained to the same storage as STLoD-GS. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Bartender is an additional custom scene that is not part of the paper tables.",
+  zoom:demoZoom.bartender, speed:demoSpeed.bartender, notationX:691, videoHeight:650,
+  src:"videos/1627_bartender_pour_x3_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1627_bartender_pour_x3_slow8.thumb.jpg?v=1122d"},
+ {s:[4,1],t:[2,8],title:"Skating (NVIDIA)",tag:"zoom ×4 · slow ×8",
+  cap:"The models are trained on every other frame at one quarter of the captured resolution. The view zooms 4× onto the skateboard and follows it at 8× slow motion. All seven baselines and STLoD-GS, with the storage of each model.",
+  paperRef:"Main paper Fig. 5 shows Skating under the Table 1 evaluation setting. Supplementary Table 9 compares the same models at 1× and 4× zoom. This clip plays the motion at one-eighth speed.",
+  zoom:demoZoom.skating, speed:demoSpeed.skating, notationX:565, videoHeight:614,
+  src:"videos/1601_nv_skating_st_x4_slow8.mp4?v=1122f",thumb:"assets/thumbnails/1601_nv_skating_st_x4_slow8.thumb.jpg"},
+];
+/* boxed s: 1/m -> r_s, t: 1/n -> r_t, as the \scen macro of the paper; a factor of 1 is written as 1 */
+function frac(m){return m===1?"1":'<span class="fr"><span>1</span><span>'+m+'</span></span>';}
+/* a target scale below 1 is given as a string "p/q" and drawn as a stacked fraction */
+function tgt(v){if(typeof v!=="string")return v;const [a,b]=v.split("/");return '<span class="fr"><span>'+a+'</span><span>'+b+'</span></span>';}
+function nota(d,live=false){
+  const spatial=live?'<span class="current-s"></span>':tgt(d.s[1]);
+  const temporal='<i>t</i>:'+frac(d.t[0])+'→'+(live?'<span class="current-t"></span>':d.t[1]);
+  return '<span class="nota"><i>s</i>:'+frac(d.s[0])+'→'+spatial+', '+temporal+'</span>';
+}
+let stopDemoReadout;
+const demoPlayer = document.getElementById("player-shell").closest(".player");
+const demoFullscreen = document.getElementById("demo-fullscreen");
+demoFullscreen.hidden = !document.fullscreenEnabled;
+demoFullscreen.onclick = () => {
+  if (document.fullscreenElement === demoPlayer) document.exitFullscreen();
+  else demoPlayer.requestFullscreen().catch(() => {});
+};
+document.addEventListener("fullscreenchange", () => {
+  demoFullscreen.textContent = document.fullscreenElement === demoPlayer ? "Exit full screen" : "Full screen";
+});
+function playDemo(d,autoplay){
+  stopDemoReadout?.();
+  const sh=document.getElementById("player-shell");
+  const reference=document.getElementById("demo-paper-ref");
+  reference.textContent=d ? d.paperRef : "";
+  reference.hidden=!d;
+  if(!d){sh.innerHTML='<div class="placeholder"><div class="play"></div><div class="ph-label">Videos for this category</div><div class="ph-sub">to be added</div></div>';
+    document.getElementById("player-title").textContent="";document.getElementById("player-cap").textContent="";return;}
+  sh.innerHTML='<div class="demo-frame"><video controls muted loop playsinline preload="auto"><source src="'+d.src+'" type="video/mp4"></video>'+
+    '<canvas class="demo-live" width="336" height="42" hidden aria-hidden="true"></canvas></div>'+
+    (d.ours?'<div class="ours-hl" style="left:'+d.ours[0]+'%;top:'+d.ours[1]+'%;width:'+d.ours[2]+'%;height:'+d.ours[3]+'%"><img src="assets/icon.png" alt=""></div>':'');
+  const video = sh.querySelector("video");
+  const liveTitle = sh.querySelector(".demo-live");
+  liveTitle.style.left = (d.notationX/1920*100)+"%";
+  if (d.notationWidth) liveTitle.style.width = (d.notationWidth/1920*100)+"%";
+  demoPlayer.style.setProperty("--demo-ratio",1920/d.videoHeight);
+  video.style.aspectRatio = "1920 / "+d.videoHeight;
+  if (!demoFullscreen.hidden) {
+    video.setAttribute("controlslist","nofullscreen");
+    video.ondblclick = event => { event.preventDefault(); demoFullscreen.click(); };
+  }
+  document.getElementById("player-title").innerHTML=d.title+" "+nota(d,true);
+  document.getElementById("player-cap").textContent=d.cap;
+  stopDemoReadout = followDemoFrame(video,d,sh.querySelector(".demo-live"),document.getElementById("player-title"));
+  document.querySelectorAll("#thumbs .thumb").forEach(t=>t.classList.toggle("active",t.dataset.src===d.src));
+  if(autoplay){const v=sh.querySelector("video");if(v)v.play().catch(()=>{});}
+}
+function drawThumbs(){
+  const list=DEMOS;
+  const box=document.getElementById("thumbs");box.innerHTML="";
+  list.forEach(d=>{const b=document.createElement("button");b.className="thumb";b.dataset.src=d.src;
+    b.innerHTML='<img src="'+d.thumb+'" alt="" loading="lazy"><div class="tt">'+d.title+'<small>'+d.tag+'</small>'+nota(d)+'</div>';
+    b.onclick=()=>playDemo(d,true);box.appendChild(b);});
+  if(!list.length){const e=document.createElement("div");e.className="thumb empty";e.textContent="Videos will be added here";box.appendChild(e);}
+  playDemo(list[0],false);
+}
+drawThumbs();
+
+/* ---------- playground helpers ---------- */
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(parent,x,y,s,attrs){const t=el("text",Object.assign({x:x,y:y,"font-size":11,fill:"#4d5844","text-anchor":"middle","font-family":"Noto Sans,-apple-system,Segoe UI,Roboto,Arial,sans-serif"},attrs||{}),parent);t.textContent=s;return t;}
+function defs(svg){
+  const d=el("defs",{},svg);
+  [["gO","#fde3cc","#e98e52","#b05b25"],["gG","#e5f2d2","#8ab85a","#4e7d22"],["gB","#e0eefc","#6aa2d8","#2f68a3"]].forEach(([id,a,b,c])=>{
+    const r=el("radialGradient",{id:id+svg.id,cx:".4",cy:".35",r:".75"},d);
+    el("stop",{offset:"0","stop-color":a},r);el("stop",{offset:".55","stop-color":b},r);el("stop",{offset:"1","stop-color":c},r);});
+}
+function gauss(svg,cx,cy,rx,ry,rot,grad,op){
+  const g=el("g",{transform:"translate("+cx.toFixed(1)+" "+cy.toFixed(1)+") rotate("+rot+")",opacity:Math.max(0,op).toFixed(3)},svg);
+  el("ellipse",{rx:rx,ry:ry,fill:"url(#"+grad+svg.id+")"},g);
+  el("ellipse",{rx:rx*0.38,ry:ry*0.22,cx:-rx*0.25,cy:-ry*0.38,fill:"#fff",opacity:.55},g);
+  return g;
+}
+/* blending weight of level l: smoothstep in log2 m from l-0.75 to l-0.15 */
+function smooth(l,m){const x=Math.log2(m),a=l-0.75,b=l-0.15;const u=Math.min(1,Math.max(0,(x-a)/(b-a)));return u*u*(3-2*u);}
+const BETA=0.05;
+
+/* ---------- playground: spatial split ---------- */
+const svgS = document.getElementById("svg-s");
+const ms = document.getElementById("ms");
+const nearDepth = 218, farDepth = 348, startCamera = 22;
+const halfFovSlope = 0.15;
+const frame = {x:10, y:143, width:380, height:94};
+const focalLength = frame.width / (2 * halfFovSlope);
+
+defs(svgS);
+const spatialDefs = svgS.querySelector("defs");
+const frameClip = el("clipPath", {id:"spatial-viewport"}, spatialDefs);
+el("rect", {...frame, rx:5}, frameClip);
+const axisY = 66, farPlane = 386;
+const cone = el("path", {fill:"#f6e2c8", opacity:0.65}, svgS);
+txt(svgS,10,15,"Top view · fixed field of view",{"text-anchor":"start","font-weight":650});
+el("line", {x1:startCamera, x2:farPlane, y1:axisY, y2:axisY, stroke:"#c5baab","stroke-dasharray":"3 4"}, svgS);
+const camera = el("g", {id:"spatial-camera",fill:"#6f6a63"}, svgS);
+el("rect", {x:-18,y:-6,width:13,height:12,rx:2}, camera);
+el("path", {d:"M-6 -3 L0 -6 V6 L-6 3Z"}, camera);
+
+// Depth is measured along the optical axis; lateral offset is positive to camera right.
+const selected = {depth:nearDepth, lateral:0, color:"gO"};
+const distant = {depth:farDepth, lateral:20, color:"gB"};
+const edge = {depth:nearDepth, lateral:-23, color:"gG"};
+for (const point of [selected, distant, edge]) {
+  gauss(svgS,point.depth,axisY+point.lateral,7,4,-12,point.color,1);
+}
+txt(svgS,10,135,"Camera view",{"text-anchor":"start","font-weight":650});
+el("rect", {...frame,rx:5,fill:"#fff",stroke:"#d9dece"}, svgS);
+const view = el("g", {"clip-path":"url(#spatial-viewport)"}, svgS);
+const blueView = el("g", {id:"spatial-far"}, view);
+const edgeView = el("g", {id:"spatial-edge"}, view);
+const parentView = el("g", {id:"spatial-selected"}, view);
+
+// Build glyphs once in scene units. Each view transform projects a whole Gaussian family.
+function spatialGlyph(group, x, rx, ry, gradient) {
+  const glyph = gauss(svgS,x,0,rx,ry,0,gradient,1);
+  group.append(glyph);
+  return glyph;
+}
+spatialGlyph(blueView,0,2.9,1.55,distant.color);
+spatialGlyph(edgeView,0,2.1,1.18,edge.color);
+const parentRadius = 2.35;
+const parentGlyph = spatialGlyph(parentView,0,parentRadius,1.03,selected.color);
+const childLevel = el("g", {}, parentView);
+const nextLevel = el("g", {}, parentView);
+for (const side of [-1,1]) {
+  const offset = side * parentRadius * 0.5;
+  spatialGlyph(childLevel,offset,1.25,0.76,selected.color);
+  for (const branch of [-1,1]) spatialGlyph(nextLevel,offset+branch*0.61,0.64,0.53,selected.color);
+}
+const footprint = el("ellipse", {cx:0,cy:0,rx:parentRadius,ry:1.03,fill:"none",stroke:"#aa754b",
+  "stroke-width":1,"vector-effect":"non-scaling-stroke","stroke-dasharray":"3 3"}, parentView);
+for (const [x,color,label] of [[14,"#c7793b","Selected · q > τ*"],[168,"#5488ba","Kept · q ≤ τ*"],[305,"#83a94e","Edge"]]) {
+  el("circle",{cx:x,cy:253,r:3.5,fill:color},svgS);
+  txt(svgS,x+8,257,label,{"text-anchor":"start"});
+}
+
+function projectSpatial(group, point, cameraDepth, rotation) {
+  const scale = focalLength / (point.depth-cameraDepth);
+  const x = frame.x + frame.width/2 + point.lateral*scale;
+  const y = frame.y + frame.height/2;
+  group.setAttribute("transform", `translate(${x} ${y}) scale(${scale}) rotate(${rotation})`);
+}
+function updS() {
+  const magnification = 2 ** Number(ms.value);
+  // With fixed intrinsics, projected size is inversely proportional to camera-to-point depth.
+  const distance = (nearDepth-startCamera) / magnification;
+  const cameraDepth = nearDepth-distance;
+  const halfSpan = (farPlane-cameraDepth)*halfFovSlope;
+  camera.setAttribute("transform", `translate(${cameraDepth} ${axisY})`);
+  cone.setAttribute("d", `M${cameraDepth} ${axisY} L${farPlane} ${axisY-halfSpan} V${axisY+halfSpan} Z`);
+  projectSpatial(parentView,selected,cameraDepth,-12);
+  projectSpatial(blueView,distant,cameraDepth,18);
+  projectSpatial(edgeView,edge,cameraDepth,-10);
+  const first = smooth(1,magnification), second = smooth(2,magnification);
+  parentGlyph.setAttribute("opacity",1-first*(1-BETA));
+  childLevel.setAttribute("opacity",first*(1-second*(1-BETA)));
+  nextLevel.setAttribute("opacity",first*second);
+  footprint.setAttribute("opacity",first*0.65);
+  for (const [id,weight] of [["w1",first],["w2",second]]) {
+    document.getElementById(id).style.width = (weight*100)+"%";
+    document.getElementById(id+"v").textContent = weight.toFixed(2);
+  }
+  const reading = magnification.toFixed(2)+"×";
+  document.getElementById("ms-v").textContent = reading;
+  ms.setAttribute("aria-valuetext",reading+" spatial magnification");
+  const note = first === 0 ? "Move the camera closer to magnify the orange parent." :
+    second === 0 ? "Two children blend into the orange parent’s projected footprint." :
+    "The two children split again, bringing four finer Gaussians into view.";
+  document.getElementById("status-s").textContent = note+" The farther blue Gaussian stays unsplit.";
+}
+ms.addEventListener("input",updS);
+updS();
+
+/* ---------- playground: temporal relocation and hand-over ---------- */
+const svgT=document.getElementById("svg-t");
+const tt=document.getElementById("tt"),mt=document.getElementById("mt");
+function drawT(u,g){
+  svgT.innerHTML="";defs(svgT);
+  const xa=70,xb=330;
+  txt(svgT,10,22,"Stored model only",{"text-anchor":"start","font-weight":700,fill:"#7c876f"});
+  txt(svgT,10,110,"With test-time relocation (Ours)",{"text-anchor":"start","font-weight":700,fill:"#4c7d16"});
+  // time axis
+  el("line",{x1:xa,y1:190,x2:xb,y2:190,stroke:"#9aa58a","stroke-width":2},svgT);
+  [[xa,"t","a"],[xb,"t","b"]].forEach(([x,a,b])=>{el("line",{x1:x,y1:184,x2:x,y2:196,stroke:"#6b7560","stroke-width":2},svgT);
+    const t=txt(svgT,x,209,"",{"font-style":"italic","font-size":12});t.textContent=a;
+    const s=el("tspan",{"font-size":9,dy:3},t);s.textContent=b;});
+  const xt=xa+(xb-xa)*u;
+  el("polygon",{points:(xt-6)+",180 "+(xt+6)+",180 "+xt+",188",fill:"#9a5a2b"},svgT);
+  // stored model only: G1 fades out at its t_a position, G2 fades in at its t_b position
+  const sig=0.28,o1=Math.exp(-0.5*(u/sig)**2),o2=Math.exp(-0.5*((1-u)/sig)**2);
+  gauss(svgT,xa+22,58,26,15,-8,"gB",o1);
+  gauss(svgT,xb-22,58,26,15,-8,"gG",o2);
+  if(u>0.08&&u<0.92)txt(svgT,200,92,"two faded copies: ghosting",{fill:"#c2372d","font-size":10.5});
+  // with relocation: both move along the predicted motion and hand over within a one-frame window
+  const w=1/g,h=Math.min(1,Math.max(0,(u-(0.5-w/2))/w));
+  const x=xa+22+(xb-xa-44)*u,y=146;
+  el("line",{x1:xa+22,y1:y,x2:xb-22,y2:y,stroke:"#b9d98a","stroke-width":2,"stroke-dasharray":"4 4"},svgT);
+  gauss(svgT,x,y,26,15,-8,"gB",1-h);
+  gauss(svgT,x,y,26,15,-8,"gG",h);
+  txt(svgT,x,y-24,"vanishing "+(1-h).toFixed(2)+" · appearing "+h.toFixed(2),{"font-size":10.5});
+}
+function updT(){
+  const g=Math.pow(2,+mt.value);
+  document.getElementById("mt-v").textContent=g+"×";
+  drawT(+tt.value,Math.max(g,2));
+  const tl=document.getElementById("tl");tl.innerHTML="";
+  for(let f=0;f<16;f++){const s=document.createElement("span");s.className=(f%g===0)?"obs":"rel";tl.appendChild(s);}
+  document.getElementById("status-t").textContent=g===1?"Every output frame is a training frame, so no relocation is needed.":
+    (g-1)+" of every "+g+" output frames fall between training frames. The vanishing Gaussian (blue) moves forward, the appearing one (green) moves backward, and they hand over within one frame around the middle.";
+}
+tt.oninput=updT;mt.oninput=updT;updT();
+let anim=null;
+document.getElementById("tplay").onclick=e=>{
+  if(anim){cancelAnimationFrame(anim);anim=null;e.target.textContent="Play";return;}
+  e.target.textContent="Pause";let last=null;
+  const step=ts=>{if(last!==null){let v=+tt.value+(ts-last)/2500;if(v>1)v=0;tt.value=v;updT();}last=ts;anim=requestAnimationFrame(step);};
+  anim=requestAnimationFrame(step);
+};
+
+/* ---------- scrollspy + progress ---------- */
+const links=[...document.querySelectorAll(".side-links a,.topbar a.l")];
+const secs=["overview","demos","method","controls","results"].map(id=>document.getElementById(id));
+function spy(){
+  const y=window.scrollY+window.innerHeight*0.3;let cur=null;
+  secs.forEach(s=>{if(s.offsetTop<=y)cur=s.id;});
+  const ids=secs.map(x=>x.id),ci=ids.indexOf(cur);
+  links.forEach(a=>{const i=ids.indexOf(a.getAttribute("href").slice(1));a.classList.toggle("active",i===ci);a.classList.toggle("done",ci>=0&&i<ci);});
+  const hh=document.documentElement.scrollHeight-window.innerHeight,pr=(hh>0?100*window.scrollY/hh:0);
+  document.getElementById("progress").style.width=pr+"%";document.getElementById("rail").style.height=pr+"%";
+}
+window.addEventListener("scroll",spy,{passive:true});spy();
+</script>
+<dialog id="method-image-dialog" aria-labelledby="method-image-title">
+  <form method="dialog"><h3 id="method-image-title"></h3><button class="btn-mini">Close</button></form>
+  <img alt="">
+</dialog>
+<script src="assets/method-figures.js"></script>
+</body>
+</html>
